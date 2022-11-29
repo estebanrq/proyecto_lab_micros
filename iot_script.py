@@ -25,7 +25,7 @@ client.on_connect = on_connect
 client.on_disconnect = on_disconnect
 client.on_publish = on_publish
 
-broker ="demo.thingsboard.io"
+broker ="iot.eie.ucr.ac.cr"
 port = 1883
 topic = "v1/devices/me/telemetry"
 device = "7ZUie6OGc2UJvSje3UWS"
@@ -38,16 +38,44 @@ while client.connected != True:
 
 while (1):
     data = datos.readline().decode('utf-8').replace('\r', "").replace('\n', "")
-    data = data.split('\t')
-    dict["Eje X"] = data[0]
-    dict["Eje Y"] = data[1]
-    dict["Eje Z"] = data[2]
-    dict["Voltaje de Bateria"] = data[3]
+    data = data.split(',')
+    #giroscopio
+    dict["Eje GX"] = data[0]
+    dict["Eje GY"] = data[1]
+    dict["Eje GZ"] = data[2]
 
-    if(float( data[3]) < 4):
-        dict["Bateria Baja"] = "Si"
-    else:
-        dict["Bateria Baja"] = "No"
+    # aceleracion
+    dict["Eje AX"] = data[3]
+    dict["Eje AY"] = data[4]
+    dict["Eje AZ"] = data[5]
+
+    # campo magnetico
+    dict["Campo Magnetico X"] = data[6]
+    dict["Campo Magnetico Y"] = data[7]
+    dict["Campo Magnetico Z"] = data[8]
+
+    # temperatura
+    dict["Temperatura"] = data[9]
+
+    # humedad
+    dict["Humedad"] = data[10]
+    
+    # varometro
+    dict["Presion Atmosferica"] = data[11]
+
+    # proximidad
+    dict["Proximidad Izq"] = data[12]
+    dict["Proximidad Cen"] = data[13]
+    dict["Proximidad Der"] = data[14]
+
+    # mov de ruedas
+    dict["Velocidad Rueda Izq"] = data[15]
+    dict["Velocidad Rueda Der"] = data[16]
+
+    # posicion
+    dict["Posicion X"] = data[17]
+    dict["Posicion Y"] = data[18]
+
     
     output = json.dumps(dict)
     print(output)
