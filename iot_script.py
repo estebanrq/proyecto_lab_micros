@@ -131,7 +131,9 @@ while (1):
     # posicion
     dict["Posicion X"] = data[17]
     dict["Posicion Y"] = data[18]
-
+    
+    # teleoperacion
+    dict["Teleoperacion"] = data[19]
     
     output = json.dumps(dict)
     print(output)
