@@ -18,7 +18,7 @@ def on_publish(client, userdata, mid):
 
 
 datos = serial.Serial("/dev/ttyACM0",115200,timeout=1) 
-print("Conectado al puerto serial /dev/ttyACM1")
+print("Conectado al puerto serial /dev/ttyACM0")
 client = mqtt.Client("B97333")
 client.connected = False
 client.on_connect = on_connect
