@@ -29,7 +29,7 @@ client.on_publish = on_publish
 broker ="iot.eie.ucr.ac.cr"
 port = 1883
 topic = "v1/devices/me/telemetry"
-device = "238973429879a"
+device = "askldh7898"
 client.username_pw_set(device)
 client.connect(broker, port)
 dict = dict()
@@ -39,7 +39,7 @@ while client.connected != True:
 
 while (1):
     data = datos.readline().decode('utf-8').replace('\r', "").replace('\n', "")
-    data = data.split(',')
+    data = data.split('\t')
     #giroscopio
     dict["Eje GX"] = data[0]
     dict["Eje GY"] = data[1]

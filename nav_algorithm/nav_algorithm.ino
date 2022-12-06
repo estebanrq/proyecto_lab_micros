@@ -56,9 +56,9 @@
 #include <Arduino_HTS221.h>
 #include <Arduino_LPS22HB.h>
 
-float max_speed = 1;
-float THRSHLD = 0.25;
-float C_THRSHLD = 0.1;
+float max_speed = 100;
+float THRSHLD = 0;
+float C_THRSHLD = 0;
 int echoPinL = 2;  // attach pin D2 Arduino to pin Echo of HC-SR04
 int trigPinL = 3;  //attach pin D3 Arduino to pin Trig of HC-SR0int
 int echoPinC = 4;  // attach pin D2 Arduino to pin Echo of HC-SR04
@@ -67,10 +67,10 @@ int echoPinR = 6;  // attach pin D2 Arduino to pin Echo of HC-SR04
 int trigPinR = 7;  //attach pin D3 Arduino to pin Trig of HC-SR0int
 
 //motor pins:
-int motor_R_F = 8;
-int motor_R_B = 9;
-int motor_L_F = 10;
-int motor_L_B = 11;
+int motor_R_F = A0;
+int motor_R_B = A1;
+int motor_L_F = A2;
+int motor_L_B = A3;
 
 
 float AX, AY, AZ = 0;
@@ -88,8 +88,12 @@ float POSE_X = 0;
 float POSE_Y = 0;
 int teleoperated = 0;
 
-float get_distance(int _trigPin, int _echoPin);
 void nav_algorithm(float max_speed, int trigPinL, int echoPinL, int trigPinC, int echoPinC, int trigPinR, int echoPinR);
+void drive_forward(float value);
+void drive_backward(float value);
+void drive_right(float value);
+void drive_left(float value);
+float get_distance(int _trigPin, int _echoPin);
 
 void setup() {
   //setting motors:
@@ -98,6 +102,11 @@ void setup() {
   pinMode(motor_L_F, OUTPUT);
   pinMode(motor_L_B, OUTPUT);
 
+  analogWrite(motor_R_F, 0);
+  analogWrite(motor_R_B, 0);
+  analogWrite(motor_L_F, 0);
+  analogWrite(motor_L_B, 0);
+
   Serial.begin(9600);
 
   if (!IMU.begin()) {
@@ -105,10 +114,10 @@ void setup() {
     //while (1);
   }
 
-  if (!HTS.begin()) {
-    Serial.println("Failed to initialize humidity temperature sensor!");
-    //while (1);
-  }
+  //if (!HTS.begin()) {
+  //  Serial.println("Failed to initialize humidity temperature sensor!");
+  //  //while (1);
+  //}
   if (!BARO.begin()) {
     Serial.println("Failed to initialize pressure sensor!");
     //while (1);
@@ -117,22 +126,9 @@ void setup() {
 
 
 void loop() {
-  float AX, AY, AZ;
-  float GX, GY, GZ;
-  float MX, MY, MZ;
-  float TEMP;    // ºC
-  float HUM;     // %
-  float PRES;    // kPa
-  float PROX_C;  // cm
-  float PROX_L;  // cm
-  float PROX_R;  // cm
-  float VEL_RUEDA_I;
-  float VEL_RUEDA_D;
-  float POSE_X;
-  float POSE_Y;
-  int teleoperated;
   // execute navigation:
-  nav_algorithm(max_speed, trigPinL, echoPinL, trigPinC, echoPinC, trigPinR, echoPinR);
+  //nav_algorithm(max_speed, trigPinL, echoPinL, trigPinC, echoPinC, trigPinR, echoPinR);
+  //drive_forward(200);
 
   //getting Acceleration data:
   if (IMU.accelerationAvailable()) {
@@ -149,7 +145,7 @@ void loop() {
 
   //getting temperature/humidity data:
   TEMP = BARO.readTemperature();
-  HUM = 10; //HTS.readHumidity();
+  HUM = 10;//HTS.readHumidity(); // This measure is failing...
 
   //getting presure data:
   PRES = BARO.readPressure();
@@ -158,59 +154,59 @@ void loop() {
   
   // Sending data to Bluetooth:
   Serial.print(GX);
-  Serial.print(",");
+  Serial.print("\t");
   Serial.print(GY);
-  Serial.print(",");
+  Serial.print("\t");
   Serial.print(GZ);
-  Serial.print(",");
+  Serial.print("\t");
   Serial.print(AX);
-  Serial.print(",");
+  Serial.print("\t");
   Serial.print(AY);
-  Serial.print(",");
+  Serial.print("\t");
   Serial.print(AZ);
-  Serial.print(",");
+  Serial.print("\t");
   Serial.print(MX);
-  Serial.print(",");
+  Serial.print("\t");
   Serial.print(MY);
-  Serial.print(",");
+  Serial.print("\t");
   Serial.print(MZ);
-  Serial.print(",");
+  Serial.print("\t");
   Serial.print(TEMP);
-  Serial.print(",");
+  Serial.print("\t");
   Serial.print(HUM);
-  Serial.print(",");
+  Serial.print("\t");
   Serial.print(PRES);
-  Serial.print(",");
+  Serial.print("\t");
   Serial.print(PROX_C);
-  Serial.print(",");
+  Serial.print("\t");
   Serial.print(PROX_L);
-  Serial.print(",");
+  Serial.print("\t");
   Serial.print(PROX_R);
-  Serial.print(",");
+  Serial.print("\t");
   Serial.print(VEL_RUEDA_I);
-  Serial.print(",");
+  Serial.print("\t");
   Serial.print(VEL_RUEDA_D);
-  Serial.print(",");
+  Serial.print("\t");
   Serial.print(POSE_X);
-  Serial.print(",");
+  Serial.print("\t");
   Serial.print(POSE_Y);
-  Serial.print(",");
+  Serial.print("\t");
   Serial.println(teleoperated);
 }
 
 void nav_algorithm(float max_speed, int trigPinL, int echoPinL, int trigPinC, int echoPinC, int trigPinR, int echoPinR) {
   // getting distance data from ultrasounds:
-  PROX_L = 1;    //get_distance(trigPinL, echoPinL);
-  PROX_C = 0.2;  //get_distance(trigPinC, echoPinC);
-  PROX_R = 3;    //get_distance(trigPinR, echoPinR);
+  PROX_L = 10;//get_distance(trigPinL, echoPinL);
+  PROX_C = 10;//get_distance(trigPinC, echoPinC);
+  PROX_R = 10;//get_distance(trigPinR, echoPinR);
 
   if (abs(PROX_L - PROX_R) > THRSHLD) {
     if (PROX_L < PROX_R) {
       drive_right(max_speed);
-      delay(1);
+      delay(10);
     } else if (PROX_R < PROX_L) {
       drive_left(max_speed);
-      delay(1);
+      delay(10);
     }
   } else {
     if (PROX_C < C_THRSHLD) {
@@ -218,35 +214,35 @@ void nav_algorithm(float max_speed, int trigPinL, int echoPinL, int trigPinC, in
       delay(1);
     } else {
       drive_forward(max_speed);
-      delay(1);
+      delay(10);
     }
   }
 }
 
-void drive_forward(int value) {
-  digitalWrite(motor_R_F, value);
-  digitalWrite(motor_R_B, 0);
-  digitalWrite(motor_L_F, value);
-  digitalWrite(motor_L_B, 0);
+void drive_forward(float value) {
+  analogWrite(motor_R_F, value);
+  analogWrite(motor_R_B, 0);
+  analogWrite(motor_L_F, value);
+  analogWrite(motor_L_B, 0);
 }
-void drive_backward(int value) {
-  digitalWrite(motor_R_F, 0);
-  digitalWrite(motor_R_B, value);
-  digitalWrite(motor_L_F, 0);
-  digitalWrite(motor_L_B, value);
+void drive_backward(float value) {
+  analogWrite(motor_R_F, 0);
+  analogWrite(motor_R_B, value);
+  analogWrite(motor_L_F, 0);
+  analogWrite(motor_L_B, value);
 }
 
-void drive_right(int value) {
-  digitalWrite(motor_R_F, value / 2);
-  digitalWrite(motor_R_B, 0);
-  digitalWrite(motor_L_F, value);
-  digitalWrite(motor_L_B, 0);
+void drive_right(float value) {
+  analogWrite(motor_R_F, value / 2);
+  analogWrite(motor_R_B, 0);
+  analogWrite(motor_L_F, value);
+  analogWrite(motor_L_B, 0);
 }
-void drive_left(int value) {
-  digitalWrite(motor_R_F, value);
-  digitalWrite(motor_R_B, 0);
-  digitalWrite(motor_L_F, value / 2);
-  digitalWrite(motor_L_B, 0);
+void drive_left(float value) {
+  analogWrite(motor_R_F, value);
+  analogWrite(motor_R_B, 0);
+  analogWrite(motor_L_F, value / 2);
+  analogWrite(motor_L_B, 0);
 }
 
 float get_distance(int _trigPin, int _echoPin) {
