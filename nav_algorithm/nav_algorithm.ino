@@ -55,10 +55,11 @@
 #include <Arduino_LSM9DS1.h>
 #include <Arduino_HTS221.h>
 #include <Arduino_LPS22HB.h>
+#include <Ultrasonic.h>
 
-float max_speed = 100;
-float THRSHLD = 0;
-float C_THRSHLD = 0;
+float max_speed = 200;
+float THRSHLD = 25;
+float C_THRSHLD = 30;
 int echoPinL = 2;  // attach pin D2 Arduino to pin Echo of HC-SR04
 int trigPinL = 3;  //attach pin D3 Arduino to pin Trig of HC-SR0int
 int echoPinC = 4;  // attach pin D2 Arduino to pin Echo of HC-SR04
@@ -67,10 +68,10 @@ int echoPinR = 6;  // attach pin D2 Arduino to pin Echo of HC-SR04
 int trigPinR = 7;  //attach pin D3 Arduino to pin Trig of HC-SR0int
 
 //motor pins:
-int motor_R_F = A0;
-int motor_R_B = A1;
-int motor_L_F = A2;
-int motor_L_B = A3;
+int AIA = 11;
+int AIB = 10;
+int BIA = 9;
+int BIB = 8;
 
 
 float AX, AY, AZ = 0;
@@ -88,7 +89,11 @@ float POSE_X = 0;
 float POSE_Y = 0;
 int teleoperated = 0;
 
-void nav_algorithm(float max_speed, int trigPinL, int echoPinL, int trigPinC, int echoPinC, int trigPinR, int echoPinR);
+Ultrasonic ultrasonicL(3, 2);
+Ultrasonic ultrasonicC(5, 4);
+Ultrasonic ultrasonicR(7, 6);
+
+void nav_algorithm(float max_speed);
 void drive_forward(float value);
 void drive_backward(float value);
 void drive_right(float value);
@@ -97,15 +102,15 @@ float get_distance(int _trigPin, int _echoPin);
 
 void setup() {
   //setting motors:
-  pinMode(motor_R_F, OUTPUT);
-  pinMode(motor_R_B, OUTPUT);
-  pinMode(motor_L_F, OUTPUT);
-  pinMode(motor_L_B, OUTPUT);
+  pinMode(AIA, OUTPUT);
+  pinMode(AIB, OUTPUT);
+  pinMode(BIA, OUTPUT);
+  pinMode(BIB, OUTPUT);
 
-  analogWrite(motor_R_F, 0);
-  analogWrite(motor_R_B, 0);
-  analogWrite(motor_L_F, 0);
-  analogWrite(motor_L_B, 0);
+  analogWrite(AIA, 0);
+  analogWrite(AIB, 0);
+  analogWrite(BIA, 0);
+  analogWrite(BIB, 0);
 
   Serial.begin(9600);
 
@@ -127,8 +132,18 @@ void setup() {
 
 void loop() {
   // execute navigation:
-  //nav_algorithm(max_speed, trigPinL, echoPinL, trigPinC, echoPinC, trigPinR, echoPinR);
-  //drive_forward(200);
+  nav_algorithm(max_speed);
+  //drive_forward(max_speed);
+  //delay(2000);
+  //drive_backward(max_speed);
+  //  delay(2000);
+  //
+  //drive_right(max_speed);
+  //  delay(2000);
+  //
+  //drive_left(max_speed);
+  //  delay(2000);
+
 
   //getting Acceleration data:
   if (IMU.accelerationAvailable()) {
@@ -145,13 +160,13 @@ void loop() {
 
   //getting temperature/humidity data:
   TEMP = BARO.readTemperature();
-  HUM = 10;//HTS.readHumidity(); // This measure is failing...
+  HUM = 10;  //HTS.readHumidity(); // This measure is failing...
 
   //getting presure data:
   PRES = BARO.readPressure();
 
 
-  
+
   // Sending data to Bluetooth:
   Serial.print(GX);
   Serial.print("\t");
@@ -194,71 +209,58 @@ void loop() {
   Serial.println(teleoperated);
 }
 
-void nav_algorithm(float max_speed, int trigPinL, int echoPinL, int trigPinC, int echoPinC, int trigPinR, int echoPinR) {
+void nav_algorithm(float max_speed) {
   // getting distance data from ultrasounds:
-  PROX_L = 10;//get_distance(trigPinL, echoPinL);
-  PROX_C = 10;//get_distance(trigPinC, echoPinC);
-  PROX_R = 10;//get_distance(trigPinR, echoPinR);
+  PROX_L = ultrasonicL.read();
+  PROX_C = ultrasonicC.read();
+  PROX_R = ultrasonicR.read();
 
-  if (abs(PROX_L - PROX_R) > THRSHLD) {
-    if (PROX_L < PROX_R) {
-      drive_right(max_speed);
-      delay(10);
-    } else if (PROX_R < PROX_L) {
-      drive_left(max_speed);
-      delay(10);
-    }
+
+  if (PROX_L < PROX_R) {
+    drive_right(max_speed);
+    delay(2);
+  } else if (PROX_R < PROX_L) {
+    drive_left(max_speed);
+    delay(2);
+  } else if (PROX_C < C_THRSHLD) {
+    drive_backward(max_speed);
+    delay(2);
   } else {
-    if (PROX_C < C_THRSHLD) {
-      drive_backward(max_speed);
-      delay(1);
-    } else {
-      drive_forward(max_speed);
-      delay(10);
-    }
+    drive_forward(max_speed);
+    delay(2);
+  }
+
+  if (PROX_R < THRSHLD) {
+    drive_left(max_speed);
+  } else if (PROX_L < THRSHLD) {
+    drive_right(max_speed);
+  } else {
+    drive_forward(max_speed*0.75);
   }
 }
 
 void drive_forward(float value) {
-  analogWrite(motor_R_F, value);
-  analogWrite(motor_R_B, 0);
-  analogWrite(motor_L_F, value);
-  analogWrite(motor_L_B, 0);
+  analogWrite(AIA, value);
+  analogWrite(AIB, 0);
+  analogWrite(BIA, value);
+  analogWrite(BIB, 0);
 }
 void drive_backward(float value) {
-  analogWrite(motor_R_F, 0);
-  analogWrite(motor_R_B, value);
-  analogWrite(motor_L_F, 0);
-  analogWrite(motor_L_B, value);
+  analogWrite(AIA, 0);
+  analogWrite(AIB, value);
+  analogWrite(BIA, 0);
+  analogWrite(BIB, value);
 }
 
-void drive_right(float value) {
-  analogWrite(motor_R_F, value / 2);
-  analogWrite(motor_R_B, 0);
-  analogWrite(motor_L_F, value);
-  analogWrite(motor_L_B, 0);
-}
 void drive_left(float value) {
-  analogWrite(motor_R_F, value);
-  analogWrite(motor_R_B, 0);
-  analogWrite(motor_L_F, value / 2);
-  analogWrite(motor_L_B, 0);
+  analogWrite(AIA, 0);
+  analogWrite(AIB, 0);
+  analogWrite(BIA, value);
+  analogWrite(BIB, 0);
 }
-
-float get_distance(int _trigPin, int _echoPin) {
-  long duration;  // variable for the duration of sound wave travel
-  int distance;   // variable for the distance measurement
-  // Clears the _trigPin condition
-  digitalWrite(_trigPin, LOW);
-  delayMicroseconds(2);
-  // Sets the _trigPin HIGH (ACTIVE) for 10 microseconds
-  digitalWrite(_trigPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(_trigPin, LOW);
-  // Reads the echoPin, returns the sound wave travel time in microseconds
-  duration = pulseIn(_echoPin, HIGH);
-  // Calculating the distance
-  distance = duration * 0.034 / 2;  // Speed of sound wave divided by 2 (go and back)
-  // Displays the distance on the Serial Monitor
-  return distance;
+void drive_right(float value) {
+  analogWrite(AIA, value);
+  analogWrite(AIB, 0);
+  analogWrite(BIA, 0);
+  analogWrite(BIB, 0);
 }
